@@ -479,6 +479,37 @@ BOOL ProcInfo::addProcessHeapsAndCheckAddress(ADDRINT eip){
 }
 
 
+//------------------------ Protected sections (Functions for FakeWriteHandler) --------------------//
 
+/*
+	Add a section of a module ( for example the .text of the NTDLL ) in order to catch
+	writes/reads inside this area
+*/
+VOID ProcInfo::addProtectedSection(ADDRINT startAddr,ADDRINT endAddr){
+	Section s;
+	s.begin = startAddr;
+	s.end = endAddr;
+	s.name = ".text";
+	
+	MYINFO("Protected section size is %d\n" , this->protected_section.size());
+	protected_section.push_back(s);
+	MYINFO("Added to protected section NTDLL %08x %08x\n" , startAddr,endAddr);
+	MYINFO("Protected section size is %d\n" , this->protected_section.size());
+}
+
+/*
+	Check if an address is inside a protected section 
+*/
+BOOL ProcInfo::isInsideProtectedSection(ADDRINT address){
+	for(std::vector<Section>::iterator it = protected_section.begin(); it != protected_section.end(); ++it){
+		
+		if(it->begin <= address && address <= it->end){
+			//MYINFO("Detected  %08x is inside %08x %08x",address, it->begin,it->end);
+			
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
 
 

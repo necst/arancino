@@ -255,6 +255,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="FakeWriteHandler.cpp" />
     <ClCompile Include="GdbDebugger.cpp" />
     <ClCompile Include="HeapModule.cpp" />
     <ClCompile Include="Helper.cpp" />
@@ -296,6 +297,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Debug.h" />
+    <ClInclude Include="FakeWriteHandler.h" />
     <ClInclude Include="GdbDebugger.h" />
     <ClInclude Include="HeapModule.h" />
     <ClInclude Include="Helper.h" />

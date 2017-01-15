@@ -5,7 +5,7 @@
 #include "FilterHandler.h"
 #include "PatternMatchModule.h"
 //#include "FakeReadHandler.h"
-//#include "FakeWriteHandler.h"
+#include "FakeWriteHandler.h"
 
 namespace W {
 	#include <Windows.h>
@@ -21,7 +21,7 @@ public:
 private:
 	PatternMatchModule evasionPatcher;
 	//FakeReadHandler fakeMemH;
-	//FakeWriteHandler fakeWriteH;
+	FakeWriteHandler fakeWriteH;
 	BOOL firstRead;
 	void ScanForMappedFiles();	
 };

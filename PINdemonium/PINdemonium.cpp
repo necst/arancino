@@ -134,6 +134,14 @@ void imageLoadCallback(IMG img,void *){
 	if(!IMG_IsMainExecutable(img)){
 		
 		//*** If you need to protect other sections of other dll put them here ***
+		if(name.find("ntdll")!= std::string::npos){		
+		  for( SEC sec= IMG_SecHead(img); SEC_Valid(sec); sec = SEC_Next(sec) ){
+			if(strcmp(SEC_Name(sec).c_str(),".text")==0){
+				MYINFO("Adding NTDLL %08x  %08x",SEC_Address(sec),SEC_Address(sec)+SEC_Size(sec));
+				proc_info->addProtectedSection(SEC_Address(sec),SEC_Address(sec)+SEC_Size(sec));
+			}
+	      }
+		}
 		// check if there are some fuction that has top be hooked in this DLL
 		hookFun.hookDispatcher(img);
 		// check if we have to filter this library during thwe instrumentation

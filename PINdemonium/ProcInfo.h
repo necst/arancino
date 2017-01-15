@@ -141,6 +141,10 @@ public:
 	BOOL getMemoryRange(ADDRINT address, MemoryRange& range);	
 	BOOL addProcessHeapsAndCheckAddress(ADDRINT address);
 
+	//Protected secions (functions for FakeMemoryHandler)
+	VOID addProtectedSection(ADDRINT startAddr,ADDRINT endAddr);
+	BOOL isInsideProtectedSection(ADDRINT address);
+
 private:
 	static ProcInfo* instance;
 	ProcInfo::ProcInfo();

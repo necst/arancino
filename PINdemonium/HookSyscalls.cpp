@@ -129,6 +129,12 @@ void HookSyscalls::NtWriteVirtualMemoryHook(syscall_t *sc , CONTEXT *ctx, SYSCAL
 		MYINFO("Write Injection through NtWriteVirtualMemoryHook pid %d  baseAddr %08x Size %08x",injected_pid,address_to_write,number_of_bytes_to_write);
 		ProcessInjectionModule::getInstance()->AddInjectedWrite((ADDRINT)address_to_write, number_of_bytes_to_write,  injected_pid );
 	}
+	//if the target address of the write is inside a protected section modify it
+	if(ProcInfo::getInstance()->isInsideProtectedSection((ADDRINT)address_to_write) && Config::getInstance()->ANTIEVASION_MODE_SWRITE){
+		ADDRINT new_address = (ADDRINT)malloc(number_of_bytes_to_write);		
+		PIN_SetSyscallArgument(ctx,SYSCALL_STANDARD_IA32_WINDOWS_FAST,1,new_address);
+	} 
+
 }
 
 void HookSyscalls::NtCreateThreadExHook(syscall_t *sc , CONTEXT *ctx , SYSCALL_STANDARD std){

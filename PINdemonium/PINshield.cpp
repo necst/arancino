@@ -32,8 +32,9 @@ ADDRINT handleRead(ADDRINT eip, ADDRINT read_addr,void *fake_mem_h){
 	}
 	return fake_addr;
 }
-
+*/
 ADDRINT handleWrite(ADDRINT eip, ADDRINT write_addr,void *fakeWriteH){	
+	
 	FakeWriteHandler fakeWrite = *(FakeWriteHandler *)fakeWriteH;
 	//get the new address of the memory operand (same as before if it is inside the whitelist otherwise a NULL poiter)
 	ADDRINT fakeAddr = fakeWrite.getFakeWriteAddress(write_addr);
@@ -47,7 +48,7 @@ ADDRINT handleWrite(ADDRINT eip, ADDRINT write_addr,void *fakeWriteH){
 	}
 	return fakeAddr;
 }
-*/
+
 //get the first scratch register available
 //we build a vector in order to deal with multiple read operand
 static REG GetScratchReg(UINT32 index)
@@ -113,6 +114,7 @@ void PINshield::avoidEvasion(INS ins){
 			}
 		}
 	}
+	*/
 	//3. memory write filter
 	if(config->ANTIEVASION_MODE_SWRITE){	
 		for (UINT32 op = 0; op<INS_MemoryOperandCount(ins); op++) {
@@ -127,5 +129,5 @@ void PINshield::avoidEvasion(INS ins){
 				INS_RewriteMemoryOperand(ins, op, writeReg); 		
 			}	
 		}	
-	}*/
+	}
 }
