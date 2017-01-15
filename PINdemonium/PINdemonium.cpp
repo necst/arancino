@@ -11,6 +11,7 @@
 #include "HookFunctions.h"
 #include "HookSyscalls.h"
 #include "PolymorphicCodeHandlerModule.h"
+#include "PINShield.h"
 #include "md5.h"
 namespace W {
 	#include <windows.h>
@@ -18,6 +19,7 @@ namespace W {
 
 
 OepFinder oepf;
+PINshield thider;
 HookFunctions hookFun;
 clock_t tStart;
 ProcInfo *proc_info = ProcInfo::getInstance();
@@ -27,6 +29,21 @@ PolymorphicCodeHandlerModule pcpatcher;
 
 KNOB <UINT32> KnobInterWriteSetAnalysis(KNOB_MODE_WRITEONCE, "pintool",
     "iwae", "0" , "specify if you want or not to track the inter_write_set analysis dumps and how many jump");
+
+KNOB <BOOL> KnobAntiEvasion(KNOB_MODE_WRITEONCE, "pintool",
+    "antiev", "false" , "specify if you want or not to activate the anti evasion engine");
+
+KNOB <BOOL> KnobAntiEvasionINSpatcher(KNOB_MODE_WRITEONCE, "pintool",
+    "antiev-ins", "false" , "specify if you want or not to activate the single patching of evasive instruction as int2e, fsave...");
+
+KNOB <BOOL> KnobAntiEvasionSuspiciousRead(KNOB_MODE_WRITEONCE, "pintool",
+    "antiev-sread", "false" , "specify if you want or not to activate the handling of suspicious reads");
+
+KNOB <BOOL> KnobAntiEvasionSuspiciousWrite(KNOB_MODE_WRITEONCE, "pintool",
+    "antiev-swrite", "false" , "specify if you want or not to activate the handling of suspicious writes");
+
+KNOB <BOOL> KnobUnpacking(KNOB_MODE_WRITEONCE, "pintool",
+    "unp", "false" , "specify if you want or not to activate the unpacking engine");
 
 KNOB <UINT32> KnobSkipDump(KNOB_MODE_WRITEONCE, "pintool",
     "skip", "0" , "specify how many times you want to skip the dump process whe wxorx rule is broken");
@@ -130,7 +147,15 @@ void imageLoadCallback(IMG img,void *){
 
 // trigger the instrumentation routine for each instruction
 void Instruction(INS ins,void *v){
+	// check the current mode of operation
+	Config *config = Config::getInstance();
+	if(config->ANTIEVASION_MODE){
+		thider.avoidEvasion(ins);
+	}
+	
+	if(config->UNPACKING_MODE){
 		oepf.IsCurrentInOEP(ins);
+	}	
 }
 
 // trigger the instrumentation routine for each trace collected (useful in order to spiot polymorphic code on the current trace)
@@ -159,9 +184,17 @@ void initDebug(){
 
 // - set the option for the current run
 void ConfigureTool(){	
+
+	
+
 	
 	Config *config = Config::getInstance();
-
+	config->ANTIEVASION_MODE = KnobAntiEvasion.Value();
+	config->ANTIEVASION_MODE_INS_PATCHING = KnobAntiEvasionINSpatcher.Value();
+	config->ANTIEVASION_MODE_SREAD = KnobAntiEvasionSuspiciousRead.Value();
+	config->ANTIEVASION_MODE_SWRITE = KnobAntiEvasionSuspiciousWrite.Value();
+	
+	config->UNPACKING_MODE = KnobUnpacking.Value();
 	config->INTER_WRITESET_ANALYSIS_ENABLE = KnobInterWriteSetAnalysis.Value();	
 	config->ADVANCED_IAT_FIX = KnobAdvancedIATFixing.Value();
 	config->POLYMORPHIC_CODE_PATCH = KnobPolymorphicCodePatch.Value();

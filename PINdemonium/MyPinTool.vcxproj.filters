@@ -49,6 +49,12 @@
     <Filter Include="Source Files\Report\HeuristicsReports">
       <UniqueIdentifier>{c2100b05-693b-4635-a84b-3fb97db9d848}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\PINShield">
+      <UniqueIdentifier>{6db8d8ed-3592-4008-b781-79e9cf0ec77e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\PINShield">
+      <UniqueIdentifier>{9f78bdfb-bdf9-4c41-9700-b3053a865a7e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Heuristics.cpp">
@@ -99,9 +105,6 @@
     <ClCompile Include="PINdemonium.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="PolymorphicCodeHandlerModule.cpp">
-      <Filter>Source Files\PINdemonium</Filter>
-    </ClCompile>
     <ClCompile Include="YaraHeuristic.cpp">
       <Filter>Source Files\PINdemonium\OEP-Heuristics</Filter>
     </ClCompile>
@@ -149,6 +152,15 @@
     </ClCompile>
     <ClCompile Include="HeapModule.cpp">
       <Filter>Source Files\PINdemonium</Filter>
+    </ClCompile>
+    <ClCompile Include="PatternMatchModule.cpp">
+      <Filter>Source Files\PINShield</Filter>
+    </ClCompile>
+    <ClCompile Include="PolymorphicCodeHandlerModule.cpp">
+      <Filter>Source Files\PINShield</Filter>
+    </ClCompile>
+    <ClCompile Include="PINshield.cpp">
+      <Filter>Source Files\PINShield</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -205,9 +217,6 @@
     <ClInclude Include="WxorXHandler.h">
       <Filter>Header Files\PINdemonium</Filter>
     </ClInclude>
-    <ClInclude Include="PolymorphicCodeHandlerModule.h">
-      <Filter>Header Files\PINdemonium</Filter>
-    </ClInclude>
     <ClInclude Include="YaraHeuristic.h">
       <Filter>Header Files\PINdemonium\OEP-Heuristics</Filter>
     </ClInclude>
@@ -258,6 +267,15 @@
     </ClInclude>
     <ClInclude Include="HeapModule.h">
       <Filter>Header Files\PINdemonium</Filter>
+    </ClInclude>
+    <ClInclude Include="PatternMatchModule.h">
+      <Filter>Header Files\PINShield</Filter>
+    </ClInclude>
+    <ClInclude Include="PolymorphicCodeHandlerModule.h">
+      <Filter>Header Files\PINShield</Filter>
+    </ClInclude>
+    <ClInclude Include="PINshield.h">
+      <Filter>Header Files\PINShield</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

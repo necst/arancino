@@ -5,6 +5,8 @@
 //Tuning Flags
 const bool Config::ATTACH_DEBUGGER = false;
 const UINT32 Config::MAX_JUMP_INTER_WRITE_SET_ANALYSIS = 20;
+const UINT32 Config::RDTSC_DIVISOR = 400;
+
 
 
 // singleton
@@ -24,6 +26,11 @@ Config::Config(std::string config_path){
 
 	loadJson(config_path);
 	//set the initial dump number
+	// TO FIX Test filename loaded directly without config file
+	string test_filename = this->base_path + "testEvasion.txt";
+	this->test_file = fopen(test_filename.c_str(),"w");
+
+
 	//W::DebugBreak();
 	this->dump_number = 0;
 	//build the path for this execution
@@ -139,7 +146,11 @@ string Config::getYaraRulesPath(){
 	return this->yara_rules_path;
 }
 
-
+//return the file pointer
+FILE* Config::getTestFile()
+{
+	return this->test_file;	
+}
 
 
 /* ----------------------------- UTILS -----------------------------*/

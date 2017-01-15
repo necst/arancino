@@ -37,8 +37,12 @@
 #define MYPRINT(fmt, ...) \
 	do { if (LOG_BUILD){ fprintf(Config::getInstance()->getLogFile(),fmt"\n", __VA_ARGS__); fflush(Config::getInstance()->getLogFile()); } } while (0)
 #else
-#defone MYPRINT(fmt,...)
+#define MYPRINT(fmt,...)
 #endif
+
+#define MYTEST(fmt, ...) \
+	do { if (LOG_BUILD){ fprintf(Config::getInstance()->getTestFile(),fmt"\n", __VA_ARGS__); fflush(Config::getInstance()->getTestFile());exit(0); } } while (0)
+
 
 #define CLOSELOG()\
 	do { if (LOG_BUILD){ Config::getInstance()->closeLogFile();}}while (0)

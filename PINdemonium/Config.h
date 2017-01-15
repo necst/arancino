@@ -22,6 +22,7 @@ class Config
 public:
 	static Config* getInstance();
 	FILE* Config::getLogFile();
+	FILE* Config::getTestFile();
 	//getter
 	string getBasePath();
 	string getCurrentDumpPath();
@@ -57,17 +58,28 @@ public:
 	UINT32 WRITEINTERVAL_MAX_NUMBER_JMP;
 	UINT32 SKIP_DUMP;
 	//mode of operation
+	bool UNPACKING_MODE;
+    bool ANTIEVASION_MODE;
+	
+	bool ANTIEVASION_MODE_INS_PATCHING;
+	bool ANTIEVASION_MODE_SREAD;
+	bool ANTIEVASION_MODE_SWRITE;
+
 	bool ADVANCED_IAT_FIX;
 	bool POLYMORPHIC_CODE_PATCH;
 	bool NULLIFY_UNK_IAT_ENTRY;
 	string PLUGIN_FULL_PATH;
 	bool CALL_PLUGIN_FLAG;
 
+	static const UINT32 RDTSC_DIVISOR;
+
+		
 
 private:
 	Config::Config(string config_path);
 	static Config* instance;
 	FILE *log_file;
+	FILE *test_file;
 	string working_dir;
 	string base_path;
 	string not_working_path;
