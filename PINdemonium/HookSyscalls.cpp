@@ -63,6 +63,7 @@ void HookSyscalls::NtQuerySystemInformationHookExit(syscall_t *sc, CONTEXT *ctx,
 		while(spi->NextEntryOffset){
 			//if the process is pin change it's name in cmd.exe in order to avoid evasion
 			if(spi->ImageName.Buffer && ( (wcscmp(spi->ImageName.Buffer, L"pin.exe") == 0))){
+				MYTEST("[POSSIBLE EVASIVE BEHAVIOR] Detection of parent process\n");
 				wcscpy(spi->ImageName.Buffer, L"cmd.exe");
 			}
 			spi=(PSYSTEM_PROCESS_INFO)((W::LPBYTE)spi+spi->NextEntryOffset); // Calculate the address of the next entry.
@@ -100,6 +101,7 @@ void HookSyscalls::NtAllocateVirtualMemoryHook(syscall_t *sc , CONTEXT *ctx , SY
 // Avoid PIN detection through NtQueryInformationProcessHook
 void HookSyscalls::NtQueryInformationProcessHook(syscall_t *sc , CONTEXT *ctx , SYSCALL_STANDARD std){
 	if( sc->arg1 == 0x1f){
+		MYTEST("[POSSIBLE EVASIVE BEHAVIOR] Detect NtQueryInformation with 0x1f paramter, leak of DEBUG flag\n");
 		unsigned int  * pdebug_flag = (unsigned int *)sc->arg2;
 		memset(pdebug_flag,0x00000001,1);
 	}
@@ -116,6 +118,9 @@ void HookSyscalls::NtMapViewOfSectionHook(syscall_t *sc , CONTEXT *ctx , SYSCALL
 		MYINFO("Write Injection through NtMapViewOfSectionHook pid %d  baseAddr %08x Size %08x",pid,*BaseAddress,*ViewSize);
 		ProcessInjectionModule::getInstance()->AddInjectedWrite((ADDRINT)*BaseAddress, *ViewSize,  pid );
 	}
+	ADDRINT base_address =  *(ADDRINT *) BaseAddress;
+	ProcInfo *proc_info = ProcInfo::getInstance();
+	proc_info->addMappedFilesAddress(base_address);
 	
 }
 
@@ -131,6 +136,7 @@ void HookSyscalls::NtWriteVirtualMemoryHook(syscall_t *sc , CONTEXT *ctx, SYSCAL
 	}
 	//if the target address of the write is inside a protected section modify it
 	if(ProcInfo::getInstance()->isInsideProtectedSection((ADDRINT)address_to_write) && Config::getInstance()->ANTIEVASION_MODE_SWRITE){
+		MYTEST("[POSSIBLE EVASIVE BEHAVIOR] Detected write on protected memory region ( f.i. NTDLL .text ) \n");
 		ADDRINT new_address = (ADDRINT)malloc(number_of_bytes_to_write);		
 		PIN_SetSyscallArgument(ctx,SYSCALL_STANDARD_IA32_WINDOWS_FAST,1,new_address);
 	} 
@@ -162,8 +168,32 @@ void HookSyscalls::NtQueueApcThreadHook(syscall_t *sc , CONTEXT *ctx , SYSCALL_S
 }
 
 
+// lower the results of the NtQueryPerformanceCounterHook
+void HookSyscalls::NtQueryPerformanceCounterHook(syscall_t *sc , CONTEXT *ctx, SYSCALL_STANDARD std){
+	//the first argument of the syscall is a pointer to the LARGE_INTEGER struct that will store the results ( hxxps://msdn.microsoft.com/en-us/library/bb432384(v=vs.85).aspx )
+	W::PLARGE_INTEGER p_li = (W::PLARGE_INTEGER)sc->arg0; 
+	// cut the QuadPart, it is usually used to calculate the delta ( ex: ElapsedMicroseconds.QuadPart = EndingTime.QuadPart - StartingTime.QuadPart; )
+	p_li->QuadPart = p_li->QuadPart/Config::CC_DIVISOR;  
+}
 
+//NtOpenProcess detected
+//let's change the PID that the malware wants to open with a non existing one in order to trigger an error status
+//we have to use this trick because we aren't able to change the return value of the syscall yet... (the value in EAX)
+void HookSyscalls::NtOpenProcessEntry(syscall_t *sc, CONTEXT *ctx, SYSCALL_STANDARD std){
+	PCLIENT_ID cid = (PCLIENT_ID)sc->arg3;
+	//if the id of the process is one of interest return an error
+	if(ProcInfo::getInstance()->isInterestingProcess((unsigned int)cid->UniqueProcess)){
+		MYTEST("[POSSIBLE EVASIVE BEHAVIOR] Detect access to protected process to leak PIN execution ( parent process, ... )\n");
+		cid->UniqueProcess = (W::HANDLE)66666;
+	}
+}
 
+//The NtRequestWaitReplyPortHook allocates 4 memory pages of type MEM_MAPPED so we need to rescan the memory after it has been performed
+void HookSyscalls::NtRequestWaitReplyPortHook(syscall_t *sc, CONTEXT *ctx, SYSCALL_STANDARD std){
+	MYINFO("Found a NtRequestWaitReplyPort");
+	ProcInfo *proc_info = ProcInfo::getInstance();
+	proc_info->setCurrentMappedFiles();
+}
 
 //----------------------------- END HOOKS -----------------------------//
 
@@ -203,13 +233,17 @@ void HookSyscalls::enumSyscalls()
 }
 
 void HookSyscalls::initHooks(){
-
+//	syscallsHooks.insert(std::pair<string,syscall_hook>("NtQueryPerformanceCounter_exit",&HookSyscalls::NtQueryPerformanceCounterHook));
 	syscallsHooks.insert(std::pair<string,syscall_hook>("NtQuerySystemInformation_exit",&HookSyscalls::NtQuerySystemInformationHookExit));
+	syscallsHooks.insert(std::pair<string,syscall_hook>("NtOpenProcess_entry",&HookSyscalls::NtOpenProcessEntry));
+	syscallsHooks.insert(std::pair<string,syscall_hook>("NtRequestWaitReplyPort_exit",&HookSyscalls::NtRequestWaitReplyPortHook));
+	syscallsHooks.insert(std::pair<string,syscall_hook>("NtQueryInformationProcess_exit",&HookSyscalls::NtQueryInformationProcessHook));
+
 
 	syscallsHooks.insert(std::pair<string,syscall_hook>("NtAllocateVirtualMemory_exit",&HookSyscalls::NtAllocateVirtualMemoryHook));
 	//hxxp://undocumented.ntinternals.net/index.html?page=UserMode%2FUndocumented%20Functions%2FMemory%20Management%2FVirtual%20Memory%2FNtWriteVirtualMemory.html
 	
-	syscallsHooks.insert(std::pair<string,syscall_hook>("NtQueryInformationProcess_exit",&HookSyscalls::NtQueryInformationProcessHook));
+	
 	
 	syscallsHooks.insert(std::pair<string,syscall_hook>("NtWriteVirtualMemory_entry",&HookSyscalls::NtWriteVirtualMemoryHook));
 	syscallsHooks.insert(std::pair<string,syscall_hook>("NtMapViewOfSection_exit",&HookSyscalls::NtMapViewOfSectionHook));

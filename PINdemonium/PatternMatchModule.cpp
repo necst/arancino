@@ -5,7 +5,7 @@
 
 //avoid the leak of the modified ip by pin
 VOID patchInt2e(ADDRINT ip, CONTEXT *ctxt, ADDRINT cur_eip ){
-	MYTEST("Int2e_evasion");
+	MYTEST("[POSSIBLE EVASIVE BEHAVIOR] int2e instruction detected ( possible leak of real EIP )\n");
 	//set the return value of the int2e (stored in edx) as the current ip
 	PIN_SetContextReg(ctxt, REG_EDX, cur_eip);	
 } 
@@ -33,7 +33,7 @@ VOID patchRtdsc(ADDRINT ip, CONTEXT *ctxt, ADDRINT cur_eip ){
 	//get the right parts 
 	UINT32 eax_new_value = divided_time; 
 	UINT32 edx_new_value = divided_time >> 32;	
-	//MYINFO("Detected a rdtsc, EAX before = %08x , EAX after = %08x , EDX before: %08x , EDX after: %08x\n", eax_value, eax_new_value, edx_value, edx_new_value);
+	//MYINFO("Detected a rdtsc, EAX before = %08x , EAX after = %08x , EDX before: %08x , EDX after: %08x\n", eax_value, le_fighe_bianche, edx_value, edx_new_value);
 	//set the registerss
 	PIN_SetContextReg(ctxt, REG_EAX,eax_new_value);
 	PIN_SetContextReg(ctxt, REG_EDX,edx_new_value);
@@ -49,8 +49,8 @@ PatternMatchModule::PatternMatchModule(void)
 	//create the map for our our patches
 	//ex : if i find an int 2e instruction we have the functon pointer for the right patch 
 	this->patchesMap.insert( std::pair<string,AFUNPTR>("int 0x2e",(AFUNPTR)patchInt2e) );
-	this->patchesMap.insert( std::pair<string,AFUNPTR>("fsave",(AFUNPTR)patchFsave) );
-	this->patchesMap.insert( std::pair<string,AFUNPTR>("rdtsc ",(AFUNPTR)patchRtdsc) );		
+	//this->patchesMap.insert( std::pair<string,AFUNPTR>("fsave",(AFUNPTR)patchFsave) );
+	//this->patchesMap.insert( std::pair<string,AFUNPTR>("rdtsc ",(AFUNPTR)patchRtdsc) );	
 }
 
 
@@ -77,6 +77,8 @@ bool PatternMatchModule::patchDispatcher(INS ins, ADDRINT curEip){
 	//disasseble the instruction
 	std::string disass_instr = INS_Disassemble(ins);
 	//if we find an fsave instruction or similar we have to patch it immediately
+	
+	/*
 	std::regex rx("^f(.*)[save|env](.*)");	
 	if (std::regex_match(disass_instr.cbegin(), disass_instr.cend(), rx)){
 		//all the register in the context can be modified
@@ -88,6 +90,7 @@ bool PatternMatchModule::patchDispatcher(INS ins, ADDRINT curEip){
 		INS_InsertCall(ins, IPOINT_BEFORE,  this->patchesMap.at("fsave"), IARG_INST_PTR, IARG_PARTIAL_CONTEXT, &regsIn, &regsOut, IARG_ADDRINT, curEip, IARG_END);
 		return true;
 	}
+	*/
 	//search if we have a patch foir this instruction
 	std::map<string, AFUNPTR>::iterator item = this->patchesMap.find(disass_instr);
 	if(item != this->patchesMap.end()){

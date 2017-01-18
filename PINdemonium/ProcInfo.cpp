@@ -163,12 +163,24 @@ bool ProcInfo::searchHeapMap(ADDRINT ip){
 	int i=0;
 	HeapZone hz;
 
+	if(  ip== 0x01600118  ){
+		MYINFO("Now checking if the address is inside the heapmap");
+	}
+
 	for (std::map<std::string,HeapZone>::iterator it=HeapMap.begin(); it!=HeapMap.end(); ++it){	
 		hz = it->second;
+		if(  ip== 0x01600118  ){
+			MYINFO("-----------Checking hz.begin= %08x - hz.end = %08x\n", hz.begin, hz.end);
+		}
 		if(ip >= hz.begin && ip <= hz.end){
+if(  ip== 0x01600118  ){
+	MYINFO("Well, true for %08x %08x", hz.begin, hz.end);}
 			   return true;
 		}
 	}
+
+	if(  ip== 0x01600118  ){
+		MYINFO("%08x isn't in any range\n", ip);}
 	return false;
 }
 
@@ -333,7 +345,15 @@ BOOL ProcInfo::isKnownLibraryInstruction(ADDRINT address){
 
 // bootstrap memory information
 void ProcInfo::addProcAddresses(){
+	setCurrentMappedFiles();
 	addPebAddress();
+	addContextDataAddress();
+	addCodePageDataAddress();
+	addSharedMemoryAddress();
+	addProcessHeapsAndCheckAddress(NULL);
+	addpShimDataAddress();
+	addpApiSetMapAddress();
+	addKUserSharedDataAddress();
 }
 
 //------------------------------------------------------------PEB------------------------------------------------------------
@@ -445,38 +465,6 @@ BOOL ProcInfo::getMemoryRange(ADDRINT address, MemoryRange& range){
 }
 
 
-//Adding the ProcessHeaps to the generic Memory Ranges
-BOOL ProcInfo::addProcessHeapsAndCheckAddress(ADDRINT eip){
-	BOOL isEipDiscoveredHere = FALSE;
-	W::SIZE_T BytesToAllocate;
-	W::PHANDLE aHeaps;
-	//getting the number of ProcessHeaps
-	W::DWORD NumberOfHeaps = W::GetProcessHeaps(0, NULL);
-    if (NumberOfHeaps == 0) {
-		MYERRORE("Error in retrieving number of Process Heaps");
-		return isEipDiscoveredHere;
-	}
-	//Allocating space for the ProcessHeaps Addresses
-	W::SIZETMult(NumberOfHeaps, sizeof(*aHeaps), &BytesToAllocate);
-	aHeaps = (W::PHANDLE)W::HeapAlloc(W::GetProcessHeap(), 0, BytesToAllocate);
-	 if ( aHeaps == NULL) {
-		MYERRORE("HeapAlloc failed to allocate space");
-		return isEipDiscoveredHere;
-	} 
-
-	W::GetProcessHeaps(NumberOfHeaps,aHeaps);
-	//Adding the memory range containing the ProcessHeaps to the  genericMemoryRanges
-	 for (int i = 0; i < NumberOfHeaps; ++i) {
-		MemoryRange processHeap;
-		if(getMemoryRange((ADDRINT) aHeaps[i],processHeap)){
-			genericMemoryRanges.push_back(processHeap);
-			if(eip >= processHeap.StartAddress && eip <= processHeap.EndAddress){
-				isEipDiscoveredHere = TRUE;
-			}
-		}
-    }
-	return isEipDiscoveredHere;
-}
 
 
 //------------------------ Protected sections (Functions for FakeWriteHandler) --------------------//
@@ -513,3 +501,188 @@ BOOL ProcInfo::isInsideProtectedSection(ADDRINT address){
 }
 
 
+//----------------------------- Know memory regions to whitelist(Functions for FakeMemoryReader) -------------
+
+//------------------------------------------------------------ Memory Mapped Files------------------------------------------------------------
+
+//Add to the mapped files list the region marked as mapped when the application starts
+VOID ProcInfo::setCurrentMappedFiles(){
+	W::MEMORY_BASIC_INFORMATION mbi;
+	W::SIZE_T numBytes;
+	W::DWORD MyAddress = 0;	
+	//delete old elements
+	mappedFiles.clear();	
+	do{
+		numBytes = W::VirtualQuery((W::LPCVOID)MyAddress, &mbi, sizeof(mbi));
+		if(mbi.Type == MEM_MAPPED){
+			MemoryRange range;
+			range.StartAddress = (ADDRINT)mbi.BaseAddress;
+			range.EndAddress = (ADDRINT)mbi.BaseAddress+mbi.RegionSize;
+			mappedFiles.push_back(range);
+		}
+		MyAddress += mbi.RegionSize;
+	}
+	while(numBytes);
+}
+
+BOOL ProcInfo::isMappedFileAddress(ADDRINT addr){
+	for(std::vector<MemoryRange>::iterator item = mappedFiles.begin(); item != mappedFiles.end(); ++item) {
+		if(item->StartAddress <= addr && addr <= item->EndAddress){
+			return true;
+		}			
+	}
+	return false;
+}
+
+VOID  ProcInfo::printMappedFileAddress(){
+	for(std::vector<MemoryRange>::iterator item = mappedFiles.begin(); item != mappedFiles.end(); ++item) {
+		MYINFO("Mapped file %08x -> %08x ",item->StartAddress , item->EndAddress);
+	}
+}
+
+//Add dynamically created mapped files to the mapped files list
+VOID ProcInfo::addMappedFilesAddress(ADDRINT startAddr){
+	MemoryRange mappedFile;
+	if(getMemoryRange((ADDRINT)startAddr,mappedFile)){
+		MYINFO("Adding mappedFile base address  %08x -> %08x ",mappedFile.StartAddress,mappedFile.EndAddress);
+		mappedFiles.push_back(mappedFile);
+	}
+}
+
+
+//------------------------------------------------------------ Other Memory Location ------------------------------------------------------------
+
+BOOL ProcInfo::isGenericMemoryAddress(ADDRINT address){
+	for(std::vector<MemoryRange>::iterator item = genericMemoryRanges.begin(); item != genericMemoryRanges.end(); ++item) {
+		if(item->StartAddress <= address && address <= item->EndAddress){
+			return true;
+		}			
+	}
+	return false;
+}
+
+
+//Adding the ContextData to the generic Memory Ranges
+VOID ProcInfo::addContextDataAddress(){
+	MemoryRange activationContextData;  
+	MemoryRange systemDefaultActivationContextData ;
+	MemoryRange pContextData;
+	if(getMemoryRange((ADDRINT)peb->ActivationContextData,activationContextData)){
+		MYINFO("Init activationContextData base address  %08x -> %08x ",activationContextData.StartAddress,activationContextData.EndAddress);
+		genericMemoryRanges.push_back(activationContextData);
+
+	}
+	if (getMemoryRange((ADDRINT)peb->SystemDefaultActivationContextData,systemDefaultActivationContextData)){
+		MYINFO("Init systemDefaultActivationContextData base address  %08x -> %08x",systemDefaultActivationContextData.StartAddress,systemDefaultActivationContextData.EndAddress);
+		genericMemoryRanges.push_back(systemDefaultActivationContextData);
+	} 
+	if(getMemoryRange((ADDRINT)peb->pContextData,pContextData)){
+		MYINFO("Init pContextData base address  %08x -> %08x",pContextData.StartAddress,pContextData.EndAddress);
+		genericMemoryRanges.push_back(pContextData);
+	}
+}
+
+//Adding the SharedMemoryAddress to the generic Memory Ranges
+VOID ProcInfo::addSharedMemoryAddress(){
+	MemoryRange readOnlySharedMemoryBase;
+	if(getMemoryRange((ADDRINT) peb->ReadOnlySharedMemoryBase,readOnlySharedMemoryBase)){
+		MYINFO("Init readOnlySharedMemoryBase base address  %08x -> %08x",readOnlySharedMemoryBase.StartAddress,readOnlySharedMemoryBase.EndAddress);
+		genericMemoryRanges.push_back(readOnlySharedMemoryBase);
+	}
+}
+
+
+//Adding the CodePageDataAddress to the generic Memory Ranges
+VOID ProcInfo::addCodePageDataAddress(){
+	MemoryRange ansiCodePageData;
+	if(getMemoryRange((ADDRINT) peb->AnsiCodePageData,ansiCodePageData)){
+		MYINFO("Init ansiCodePageData base address  %08x -> %08x",ansiCodePageData.StartAddress,ansiCodePageData.EndAddress);
+		genericMemoryRanges.push_back(ansiCodePageData);
+	}
+}
+
+
+//Adding the pShimDataAddress to the generic Memory Ranges
+VOID ProcInfo::addpShimDataAddress(){
+	MemoryRange pShimData;
+	if(getMemoryRange((ADDRINT) peb->pShimData,pShimData)){
+		genericMemoryRanges.push_back(pShimData);
+	}
+}
+
+//Adding the pShimDataAddress to the generic Memory Ranges
+VOID ProcInfo::addpApiSetMapAddress(){
+	MemoryRange ApiSetMap;
+	if(getMemoryRange((ADDRINT) peb->ApiSetMap,ApiSetMap)){
+		//MYINFO("Init ApiSetMap base address  %08x -> %08x",ApiSetMap.StartAddress,ApiSetMap.EndAddress);
+		genericMemoryRanges.push_back(ApiSetMap);
+	}
+}
+
+//Add to the generic memory ranges the KUserShareData structure
+VOID ProcInfo::addKUserSharedDataAddress(){
+	MemoryRange KUserSharedData;
+	KUserSharedData.StartAddress = KUSER_SHARED_DATA_ADDRESS;
+	KUserSharedData.EndAddress =KUSER_SHARED_DATA_ADDRESS +KUSER_SHARED_DATA_SIZE;
+	genericMemoryRanges.push_back(KUserSharedData);
+	
+}
+//Adding the ProcessHeaps to the generic Memory Ranges
+BOOL ProcInfo::addProcessHeapsAndCheckAddress(ADDRINT eip){
+	BOOL isEipDiscoveredHere = FALSE;
+	W::SIZE_T BytesToAllocate;
+	W::PHANDLE aHeaps;
+	//getting the number of ProcessHeaps
+	W::DWORD NumberOfHeaps = W::GetProcessHeaps(0, NULL);
+    if (NumberOfHeaps == 0) {
+		MYERRORE("Error in retrieving number of Process Heaps");
+		return isEipDiscoveredHere;
+	}
+	//Allocating space for the ProcessHeaps Addresses
+	W::SIZETMult(NumberOfHeaps, sizeof(*aHeaps), &BytesToAllocate);
+	aHeaps = (W::PHANDLE)W::HeapAlloc(W::GetProcessHeap(), 0, BytesToAllocate);
+	 if ( aHeaps == NULL) {
+		MYERRORE("HeapAlloc failed to allocate space");
+		return isEipDiscoveredHere;
+	} 
+
+	W::GetProcessHeaps(NumberOfHeaps,aHeaps);
+	//Adding the memory range containing the ProcessHeaps to the  genericMemoryRanges
+	 for (int i = 0; i < NumberOfHeaps; ++i) {
+		MemoryRange processHeap;
+		if(getMemoryRange((ADDRINT) aHeaps[i],processHeap)){
+			genericMemoryRanges.push_back(processHeap);
+			if(eip >= processHeap.StartAddress && eip <= processHeap.EndAddress){
+				isEipDiscoveredHere = TRUE;
+			}
+		}
+    }
+	return isEipDiscoveredHere;
+}
+
+
+//-------------------------- Anti process fingerprint --------------
+BOOL ProcInfo::isInterestingProcess(unsigned int pid){
+	return this->interresting_processes_pid.find(pid) != this->interresting_processes_pid.end();
+}
+
+// print the whitelisted memory in a fancy way
+void ProcInfo::PrintWhiteListedAddr(){
+	//Iterate through the already whitelisted memory addresses
+	for(std::vector<MemoryRange>::iterator item = genericMemoryRanges.begin(); item != genericMemoryRanges.end(); ++item) {
+		MYINFO("[MEMORY RANGE]Whitelisted  %08x  ->  %08x\n",item->StartAddress,item->EndAddress);				
+	}
+	for (std::map<std::string,HeapZone>::iterator it=HeapMap.begin(); it!=HeapMap.end(); ++it){	
+		HeapZone hz = it->second;
+		MYINFO("[HEAPZONES]Whitelisted  %08x  ->  %08x\n",hz.begin,hz.end);				
+	}
+	for(std::vector<LibraryItem>::iterator item = this->unknownLibraries.begin(); item != this->unknownLibraries.end(); ++item) {
+		MYINFO("[UNKNOWN LIBRARY ITEM]Whitelisted  %08x  ->  %08x\n",item->StartAddress,item->EndAddress);				
+	}
+	for(std::vector<LibraryItem>::iterator item = this->knownLibraries.begin(); item != this->knownLibraries.end(); ++item) {
+		MYINFO("[KNOWN LIBRARY ITEM]Whitelisted  %08x  ->  %08x\n",item->StartAddress,item->EndAddress);				
+	}
+	for(std::vector<MemoryRange>::iterator item = this->mappedFiles.begin(); item != this->mappedFiles.end(); ++item) {
+		MYINFO("[MAPPED FILES]Whitelisted  %08x  ->  %08x\n",item->StartAddress,item->EndAddress);				
+	}
+}

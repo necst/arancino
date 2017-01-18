@@ -41,7 +41,7 @@
 #endif
 
 #define MYTEST(fmt, ...) \
-	do { if (LOG_BUILD){ fprintf(Config::getInstance()->getTestFile(),fmt"\n", __VA_ARGS__); fflush(Config::getInstance()->getTestFile());exit(0); } } while (0)
+	do { if (LOG_BUILD){ fprintf(Config::getInstance()->getTestFile(),fmt"\n", __VA_ARGS__); fflush(Config::getInstance()->getTestFile()); } } while (0)
 
 
 #define CLOSELOG()\

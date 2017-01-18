@@ -5,9 +5,21 @@
 //Tuning Flags
 const bool Config::ATTACH_DEBUGGER = false;
 const UINT32 Config::MAX_JUMP_INTER_WRITE_SET_ANALYSIS = 20;
+
+
+// Divisor of the timing 
+//if we divide high_1_part and high_2_part with two different values the timeGetTime() doesn't work
+//it doesn't work because high_1_part and high_2_part are used in order to understand if the value read for the low_part
+//is consistent ( high_1_part == high_2_part -> low_part consistent ) 
+const UINT32 Config::KSYSTEM_TIME_DIVISOR = 1;
+const UINT32 Config::TICK_DIVISOR = 3000;	//this value is based on exait technique (the time returned is equal to the time returned when the program is not instrumented)
+const UINT32 Config::CC_DIVISOR = 3500;	//this value is based on exait technique (the time returned is equal to the time returned when the program is not instrumented)
+
+//the rdtsc works like this :
+//store the least 32 significant bit of the returned value in EAX and the most 32 significant bit in EDX ( value = EDX:EAX )
 const UINT32 Config::RDTSC_DIVISOR = 400;
-
-
+const UINT32 Config::INTERRUPT_TIME_DIVISOR = 1000;
+const UINT32 Config::SYSTEM_TIME_DIVISOR = 100;
 
 // singleton
 Config* Config::instance = 0;
@@ -26,15 +38,15 @@ Config::Config(std::string config_path){
 
 	loadJson(config_path);
 	//set the initial dump number
-	// TO FIX Test filename loaded directly without config file
-	string test_filename = this->base_path + "testEvasion.txt";
-	this->test_file = fopen(test_filename.c_str(),"w");
+
 
 
 	//W::DebugBreak();
 	this->dump_number = 0;
 	//build the path for this execution
 	this->base_path = results_path + this->getCurDateAndTime() + "\\";
+	
+	
 
 	//printf("BASE PATH: %s\n" , this->base_path.c_str());
 
@@ -53,6 +65,14 @@ Config::Config(std::string config_path){
 	//printf("LOG FILE PATH: %s\n" , log_file_path.c_str());
 
 	this->log_file = fopen(log_file_path.c_str(),"w");	
+
+	// TO FIX Test filename loaded directly without config file
+	string test_filename = this->base_path + "testEvasion.txt";
+	printf("test_filename is %s\n", test_filename);
+
+	this->test_file = fopen(test_filename.c_str(),"w");
+	printf("test_file is %08x\n", test_file);
+
 	this->working = -1;
 }
 
@@ -149,6 +169,7 @@ string Config::getYaraRulesPath(){
 //return the file pointer
 FILE* Config::getTestFile()
 {
+	MYINFO("test fieeeeeeeeeeeeeeeee %s",this->test_file);
 	return this->test_file;	
 }
 

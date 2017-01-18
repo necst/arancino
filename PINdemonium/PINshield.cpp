@@ -3,7 +3,7 @@
 
 #define KUSER_SHARED_DATA_ADDRESS 0x7ffe0000
 #define KUSER_SHARED_DATA_SIZE 0x3e0 
-
+int opraio=0; //IO NON FACCIO
 PINshield::PINshield(void)
 {
 }
@@ -13,10 +13,9 @@ PINshield::~PINshield(void)
 {
 }
 
-/*
+
 ADDRINT handleRead(ADDRINT eip, ADDRINT read_addr,void *fake_mem_h){
 	FakeReadHandler fake_mem = *(FakeReadHandler *)fake_mem_h;
-	//get the new address of the memory operand (same as before if it is inside the whitelist otherwise a NULL poiter)
 	ADDRINT fake_addr = fake_mem.getFakeMemory(read_addr, eip);
 	if(fake_addr == NULL){
 		MYINFO("%08x in %s reading %08x",eip, RTN_FindNameByAddress(eip).c_str() , read_addr);
@@ -25,14 +24,18 @@ ADDRINT handleRead(ADDRINT eip, ADDRINT read_addr,void *fake_mem_h){
 		return read_addr; // let the program trigger its exception if it want
 	}
 	if (fake_addr != read_addr){
+		/*
 		if(read_addr < KUSER_SHARED_DATA_ADDRESS  || read_addr > KUSER_SHARED_DATA_ADDRESS + KUSER_SHARED_DATA_SIZE){
-			MYTEST("handleRead_evasion %08x read at %08x",eip,read_addr);
+			MYINFO("handleRead_evasion %08x read at %08x",eip,read_addr);
 		}
-		MYINFO("ip : %08x in %s reading %08x and it has been redirected to : %08x",eip, RTN_FindNameByAddress(eip).c_str() , read_addr, fake_addr);
+		*/
+
+		MYTEST("[POSSIBLE EVASIVE BEHAVIOR] Read inside a protected memory region\n");
+		//MYINFO("ip : %08x in %s reading %08x and it has been redirected to : %08x",eip, RTN_FindNameByAddress(eip).c_str() , read_addr, fake_addr);
 	}
 	return fake_addr;
 }
-*/
+
 ADDRINT handleWrite(ADDRINT eip, ADDRINT write_addr,void *fakeWriteH){	
 	
 	FakeWriteHandler fakeWrite = *(FakeWriteHandler *)fakeWriteH;
@@ -42,9 +45,13 @@ ADDRINT handleWrite(ADDRINT eip, ADDRINT write_addr,void *fakeWriteH){
 		return write_addr; // let the program trigger its exception if it want
 	}
 	if(fakeAddr != write_addr){
+
+		MYTEST("[POSSIBLE EVASIVE BEHAVIOR] Detected write on protected memory region ( f.i. NTDLL .text ) \n");
+		/*
 		MYTEST("handleWrite_evasion %08x",write_addr);
 		MYINFO("suspicious write from %08x in %s in %08x redirected to %08x", eip, RTN_FindNameByAddress(write_addr).c_str(), write_addr, fakeAddr);
 		MYINFO("Binary writes %08x\n" , *(unsigned int *)(fakeAddr));
+		*/
 	}
 	return fakeAddr;
 }
@@ -77,22 +84,12 @@ void PINshield::avoidEvasion(INS ins){
 	if(filterHandler->isFilteredLibraryInstruction(curEip)){
 		return;
 	}
-	// Pattern matching in order to avoid the dead path of obsidium
-	if(strcmp( (INS_Disassemble(ins).c_str() ),"xor eax, dword ptr [edx+ecx*8+0x4]") == 0){
-		MYTEST("Obsidium_evasion");
-		REGSET regsIn;
-		REGSET_AddAll(regsIn);
-		REGSET regsOut;
-		REGSET_AddAll(regsOut);
-		if(INS_HasFallThrough(ins)){
-			INS_InsertCall(ins,IPOINT_AFTER,(AFUNPTR)KillObsidiumDeadPath, IARG_PARTIAL_CONTEXT, &regsIn, &regsOut,IARG_END); 
-		}
-		}
+
 	// 1 - single instruction detection
 	if(config->ANTIEVASION_MODE_INS_PATCHING && this->evasionPatcher.patchDispatcher(ins, curEip)){
 		return;
 	}
-	/*
+	
 	// 2 - memory read 
 	// Checking if there is a read at addresses that the application shouldn't be aware of
 	if(config->ANTIEVASION_MODE_SREAD){
@@ -114,7 +111,7 @@ void PINshield::avoidEvasion(INS ins){
 			}
 		}
 	}
-	*/
+	
 	//3. memory write filter
 	if(config->ANTIEVASION_MODE_SWRITE){	
 		for (UINT32 op = 0; op<INS_MemoryOperandCount(ins); op++) {

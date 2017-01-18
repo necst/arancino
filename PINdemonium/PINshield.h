@@ -4,7 +4,7 @@
 #include "Log.h"
 #include "FilterHandler.h"
 #include "PatternMatchModule.h"
-//#include "FakeReadHandler.h"
+#include "FakeReadHandler.h"
 #include "FakeWriteHandler.h"
 
 namespace W {
@@ -20,7 +20,7 @@ public:
 
 private:
 	PatternMatchModule evasionPatcher;
-	//FakeReadHandler fakeMemH;
+	FakeReadHandler fakeMemH;
 	FakeWriteHandler fakeWriteH;
 	BOOL firstRead;
 	void ScanForMappedFiles();	

@@ -21,6 +21,8 @@ namespace W{
 
 #define MAX_STACK_SIZE 0x100000    //Used to define the memory range of the stack
 #define TEB_SIZE 0xfe0 	
+#define KUSER_SHARED_DATA_ADDRESS 0x7ffe0000
+#define KUSER_SHARED_DATA_SIZE 0x3e0 
 
 
 typedef struct PEB {
@@ -121,9 +123,16 @@ public:
 	bool searchHeapMap(ADDRINT ip);
 	HeapZone *getHeapZoneByIndex(UINT32 index);
 	float GetEntropy();
+	std::vector<HeapZone> getWhitelistHeap();
 	void insertInJmpBlacklist(ADDRINT ip);
 	BOOL isInsideJmpBlacklist(ADDRINT ip);
 	BOOL isInsideMainIMG(ADDRINT address);
+	
+	//Protected secions (functions for FakeMemoryHandler)
+	VOID addProtectedSection(ADDRINT startAddr,ADDRINT endAddr);
+	BOOL isInsideProtectedSection(ADDRINT address);
+
+	//Whitelisted memory (functions for FakeMemoryReader)
 	//PEB
 	BOOL isPebAddress(ADDRINT addr);
 	//TEB
@@ -141,22 +150,35 @@ public:
 	BOOL getMemoryRange(ADDRINT address, MemoryRange& range);	
 	BOOL addProcessHeapsAndCheckAddress(ADDRINT address);
 
-	//Protected secions (functions for FakeMemoryHandler)
-	VOID addProtectedSection(ADDRINT startAddr,ADDRINT endAddr);
-	BOOL isInsideProtectedSection(ADDRINT address);
+	//Memory Mapped Files
+	BOOL isMappedFileAddress(ADDRINT addr);
+	VOID addMappedFilesAddress(ADDRINT startAddr);
+	VOID setCurrentMappedFiles();
+	VOID printMappedFileAddress();
+	//Generic Address
+	BOOL isGenericMemoryAddress(ADDRINT address);
+	void PrintWhiteListedAddr();
+
+	//Process Fingerprint
+	BOOL isInterestingProcess(unsigned int pid);
+
 
 private:
 	static ProcInfo* instance;
 	ProcInfo::ProcInfo();
 	ADDRINT first_instruction;
 	ADDRINT prev_ip;
+	std::unordered_set<string> interresting_processes_name; 
+	std::unordered_set<unsigned int> interresting_processes_pid;  
 	std::vector<MemoryRange>  stacks;				   //Set of Stack one for each thread
 	MemoryRange mainImg;
 	std::vector<MemoryRange> tebs;                     //Teb Base Address
 	std::vector<MemoryRange> genericMemoryRanges;
+	std::vector<MemoryRange>  mappedFiles;
 	PEB *peb;
 	std::vector<Section> Sections;
 	std::map<std::string, HeapZone> HeapMap;
+	std::vector<HeapZone> WhitelistHeap;
 	std::map<std::string, std::string> HeapMapDumped;
 	std::unordered_set<ADDRINT> addr_jmp_blacklist;
 	std::vector<LibraryItem> knownLibraries;		   //vector of know library loaded
@@ -174,8 +196,19 @@ private:
 	//return the MemoryRange in which the address is mapped
 	BOOL isKnownLibrary(const string name,ADDRINT startAddr,ADDRINT endAddr);
 	VOID addPebAddress();
+	VOID addContextDataAddress();
+	VOID addSharedMemoryAddress();
+	VOID addCodePageDataAddress();
+	VOID addpShimDataAddress();
+	VOID addpApiSetMapAddress();
+	VOID addKUserSharedDataAddress();
 	//Library Helpers
 	string libToString(LibraryItem lib);
 	long long FindEx(W::HANDLE hProcess, W::LPVOID MemoryStart, W::DWORD MemorySize, W::LPVOID SearchPattern, W::DWORD PatternSize, W::LPBYTE WildCard);
+	void retrieveInterestingPidFromNames();
+	
+
+
+
 };
 

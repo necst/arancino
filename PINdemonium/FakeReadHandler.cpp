@@ -5,7 +5,8 @@ FakeReadHandler::FakeReadHandler(void)
 	pInfo = ProcInfo::getInstance();
 	//Populating the ntdll function patch  table
 	ntdllHooksNamesPatch.insert(std::pair<string,string>("KiUserApcDispatcher","\x8D\x84\x24\xDC\x02\x00\x00"));
-	ntdllHooksNamesPatch.insert(std::pair<string,string>("KiUserCallbackDispatcher","\x64\x8B\x0D\x00\x00\x00\x00"));
+	string KiUserPatch("\x64\x8B\x00\x0D\x00\x00\x00",7);// Trick to be able to insert null bytes
+	ntdllHooksNamesPatch.insert(std::pair<string,string>("KiUserCallbackDispatcher",KiUserPatch));
 	ntdllHooksNamesPatch.insert(std::pair<string,string>("KiUserExceptionDispatcher","\xFC\x8B\x4C\x24\x04"));
 	ntdllHooksNamesPatch.insert(std::pair<string,string>("LdrInitializeThunk","\x8B\xFF\x55\x8B\xEC"));
 
@@ -27,6 +28,86 @@ ADDRINT FakeReadHandler::ntdllFuncPatch(ADDRINT curReadAddr, ADDRINT ntdllFuncAd
 	MYINFO("read at %08x containig %02x  Patched address %08x with string %02x \n",curReadAddr, *(char *)curReadAddr,patchAddr,*(char *)curFakeMemory.c_str());
 	return patchAddr;
 }
+
+
+
+//populate FakeMemory Array which contains the FakeMemoryItem 
+VOID FakeReadHandler::initFakeMemory(){	
+	//Hide the ntdll hooks
+	for(map<string,string>::iterator it = ntdllHooksNamesPatch.begin(); it != ntdllHooksNamesPatch.end();++it){
+		const char  *funcName = it->first.c_str();
+		string patch = it->second;
+		ADDRINT address = (ADDRINT)W::GetProcAddress(W::GetModuleHandle("ntdll.dll"), funcName);		
+		ntdllHooksAddrPatch.insert(std::pair<ADDRINT,string>(address,patch));
+		FakeMemoryItem fakeMem;
+		fakeMem.StartAddress = address;
+		fakeMem.EndAddress = address + patch.length()-1; //-1 beacuse need to exclude the trailing 0x00
+		fakeMem.func = &FakeReadHandler::ntdllFuncPatch;
+		fakeMemory.push_back(fakeMem);
+		MYINFO("Add FakeMemory ntdll %s addr  %08x -> %08x",funcName,fakeMem.StartAddress,fakeMem.EndAddress);
+	}
+	//add other FakeMemoryItem to the fakeMemory array for handling other cases
+	/*
+	//add FakeMemoryItem in order to fake the getTickCount value
+	FakeMemoryItem fakeGetTickCount;
+	fakeGetTickCount.StartAddress = KUSER_SHARED_DATA_ADDRESS + TICK_MULTIPLIER_OFFSET;  
+	fakeGetTickCount.EndAddress = KUSER_SHARED_DATA_ADDRESS + TICK_MULTIPLIER_OFFSET + TICK_MULTIPLIER_SIZE; // the end of the TickMultiplier field 
+	fakeGetTickCount.func = &FakeReadHandler::TickMultiplierPatch;
+	fakeMemory.push_back(fakeGetTickCount);
+	//add FakeMemoryItem in order to fake TimeGetTime value retreived from the InterruptTime structure in KUSER_SHARED_DATA 
+	FakeMemoryItem fakeTimeGetTime;
+	fakeTimeGetTime.StartAddress = KUSER_SHARED_DATA_ADDRESS + LOW_PART_INTERRUPT_TIME_OFFSET;
+	fakeTimeGetTime.EndAddress = KUSER_SHARED_DATA_ADDRESS + HIGH_2_INTERRUPT_TIME_OFFSET;
+	fakeTimeGetTime.func = &FakeReadHandler::InterruptTimePatch;
+	fakeMemory.push_back(fakeTimeGetTime);
+	// Faking the SystemTime structure 
+	FakeMemoryItem fakeSystemTime;
+	fakeSystemTime.StartAddress = KUSER_SHARED_DATA_ADDRESS + LOW_PART_SYSTEM_TIME_OFFSET ; // start addr of systemtime structure 
+	fakeSystemTime.EndAddress = KUSER_SHARED_DATA_ADDRESS + HIGH_2_SYSTEM_TIME_OFFSET;
+	fakeSystemTime.func = &FakeReadHandler::SystemTimePatch;
+	fakeMemory.push_back(fakeSystemTime);
+	*/
+	
+}
+
+ADDRINT FakeReadHandler::getFakeMemory(ADDRINT address, ADDRINT eip){
+	//Check if address is inside the FakeMemory array (need to modify the result of the read)
+	for(std::vector<FakeMemoryItem>::iterator it = fakeMemory.begin(); it != fakeMemory.end(); ++it){
+		if(it->StartAddress <= address && address <= it->EndAddress){
+			//Executing the PatchFunction associated to this memory range which contains the address
+			ADDRINT patchedAddr = it->func(address, it->StartAddress);
+			MYINFO("Found address in FakeMemory %08x ", patchedAddr);
+			MYINFO("Found FakeMemory read at %08x containig %08x  Patched at %08x containing %08x",address, *(unsigned int *)address, patchedAddr, *(unsigned int *)patchedAddr);
+			MYINFO("ip : %08x in %s reading %08x and it has been redirected to : %08x",eip, RTN_FindNameByAddress(eip).c_str() , address, patchedAddr);
+			return patchedAddr;			
+		}
+	}
+
+		return address;
+		/*
+	//Check if the address is inside the WhiteListed addresses( need to return the correct value)
+	if(isAddrInWhiteList(address)){
+		return address;
+	}
+	//Read address is outside of the Whitelist probably in the PIN address space (need to return some random garbage)
+	else{
+		ProcInfo *p = ProcInfo::getInstance();
+		// here the whitelist is updated and we check also if the address is inside the new discovere heaps
+		if(p->addProcessHeapsAndCheckAddress(address)){
+			return address;
+		}	  
+		if(CheckInCurrentDlls(address)){
+			return address;
+		}
+		else{
+			curFakeMemory = "TopoMotoTopoMotoTopoMotoTopoMotoTopoMotoTopoMotoTopoMoto";
+			return NULL;
+		}
+	}*/
+
+	
+}
+
 
 ADDRINT FakeReadHandler::TickMultiplierPatch(ADDRINT curReadAddr, ADDRINT addr){
 	int tick_multiplier; 
@@ -106,39 +187,6 @@ ADDRINT FakeReadHandler::SystemTimePatch(ADDRINT curReadAddr, ADDRINT addr){
 }
 
 
-VOID FakeReadHandler::initFakeMemory(){	
-	//Hide the ntdll hooks
-	for(map<string,string>::iterator it = ntdllHooksNamesPatch.begin(); it != ntdllHooksNamesPatch.end();++it){
-		const char  *funcName = it->first.c_str();
-		string patch = it->second;
-		ADDRINT address = (ADDRINT)W::GetProcAddress(W::GetModuleHandle("ntdll.dll"), funcName);		
-		ntdllHooksAddrPatch.insert(std::pair<ADDRINT,string>(address,patch));
-		FakeMemoryItem fakeMem;
-		fakeMem.StartAddress = address;
-		fakeMem.EndAddress = address + patch.length()-1; //-1 beacuse need to exclude the trailing 0x00
-		fakeMem.func = &FakeReadHandler::ntdllFuncPatch;
-		fakeMemory.push_back(fakeMem);
-		MYINFO("Add FakeMemory ntdll %s addr  %08x -> %08x",funcName,fakeMem.StartAddress,fakeMem.EndAddress);
-	}
-	//add FakeMemoryItem in order to fake the getTickCount value
-	FakeMemoryItem fakeGetTickCount;
-	fakeGetTickCount.StartAddress = KUSER_SHARED_DATA_ADDRESS + TICK_MULTIPLIER_OFFSET;  
-	fakeGetTickCount.EndAddress = KUSER_SHARED_DATA_ADDRESS + TICK_MULTIPLIER_OFFSET + TICK_MULTIPLIER_SIZE; // the end of the TickMultiplier field 
-	fakeGetTickCount.func = &FakeReadHandler::TickMultiplierPatch;
-	fakeMemory.push_back(fakeGetTickCount);
-	//add FakeMemoryItem in order to fake TimeGetTime value retreived from the InterruptTime structure in KUSER_SHARED_DATA 
-	FakeMemoryItem fakeTimeGetTime;
-	fakeTimeGetTime.StartAddress = KUSER_SHARED_DATA_ADDRESS + LOW_PART_INTERRUPT_TIME_OFFSET;
-	fakeTimeGetTime.EndAddress = KUSER_SHARED_DATA_ADDRESS + HIGH_2_INTERRUPT_TIME_OFFSET;
-	fakeTimeGetTime.func = &FakeReadHandler::InterruptTimePatch;
-	fakeMemory.push_back(fakeTimeGetTime);
-	// Faking the SystemTime structure 
-	FakeMemoryItem fakeSystemTime;
-	fakeSystemTime.StartAddress = KUSER_SHARED_DATA_ADDRESS + LOW_PART_SYSTEM_TIME_OFFSET ; // start addr of systemtime structure 
-	fakeSystemTime.EndAddress = KUSER_SHARED_DATA_ADDRESS + HIGH_2_SYSTEM_TIME_OFFSET;
-	fakeSystemTime.func = &FakeReadHandler::SystemTimePatch;
-	fakeMemory.push_back(fakeSystemTime);
-}
 
 BOOL getMemoryRange(ADDRINT address, MemoryRange& range){	
 	W::MEMORY_BASIC_INFORMATION mbi;
@@ -199,39 +247,6 @@ BOOL FakeReadHandler::CheckInCurrentDlls(UINT32 address_to_check){
 	return TRUE;
 }
 
-ADDRINT FakeReadHandler::getFakeMemory(ADDRINT address, ADDRINT eip){
-	//Check if address is inside the FakeMemory array (need to modify the result of the read)
-	for(std::vector<FakeMemoryItem>::iterator it = fakeMemory.begin(); it != fakeMemory.end(); ++it){
-		if(it->StartAddress <= address && address <= it->EndAddress){
-			//Executing the PatchFunction associated to this memory range which contains the address
-			ADDRINT patchedAddr = it->func(address, it->StartAddress);
-			MYINFO("Found address in FakeMemory %08x ", patchedAddr);
-			MYINFO("Found FakeMemory read at %08x containig %08x  Patched at %08x containing %08x",address, *(unsigned int *)address, patchedAddr, *(unsigned int *)patchedAddr);
-			MYINFO("ip : %08x in %s reading %08x and it has been redirected to : %08x",eip, RTN_FindNameByAddress(eip).c_str() , address, patchedAddr);
-			return patchedAddr;			
-		}
-	}
-	//Check if the address is inside the WhiteListed addresses( need to return the correct value)
-	if(isAddrInWhiteList(address)){
-		return address;
-	}
-	//Read address is outside of the Whitelist probably in the PIN address space (need to return some random garbage)
-	else{
-		ProcInfo *p = ProcInfo::getInstance();
-		// here the whitelist is updated and we check also if the address is inside the new discovere heaps
-		if(p->addProcessHeapsAndCheckAddress(address)){
-			return address;
-		}	  
-		if(CheckInCurrentDlls(address)){
-			return address;
-		}
-		else{
-			curFakeMemory = "TopoMotoTopoMotoTopoMotoTopoMotoTopoMotoTopoMotoTopoMoto";
-			return NULL;
-		}
-	}
-	
-}
 
 
 /**
@@ -256,7 +271,7 @@ BOOL FakeReadHandler::isAddrInWhiteList(ADDRINT address){
 		return TRUE;
 	}
 	//Dynamic Allocation
-	if(myProcInfo->searchHeapMap(address)!= -1){
+	if(myProcInfo->searchHeapMap(address)){
 		//MYINFO("Inside Heaps");
 		return TRUE;
 	}

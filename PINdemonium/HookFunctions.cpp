@@ -129,7 +129,22 @@ VOID VirtualFreeHook(UINT32 address_to_free){
 		pInfo->deleteHeapZone(md5_to_remove);
 	}
 }
+/*
+VOID VirtualQueryHook (W::LPCVOID baseAddress, W::PMEMORY_BASIC_INFORMATION mbi, W::SIZE_T *numBytes) {
+	FakeReadHandler* fake_memory_handler = new FakeReadHandler();
+	if (!fake_memory_handler->isAddrInWhiteList((ADDRINT)baseAddress) && numBytes && mbi) {
+		*numBytes = 0;
+		mbi->State = MEM_FREE;
+	}
+}
 
+
+
+VOID VirtualQueryExHook (W::HANDLE hProcess, W::LPCVOID baseAddress, W::PMEMORY_BASIC_INFORMATION mbi, W::SIZE_T *numBytes) {
+	if (hProcess == W::GetCurrentProcess())
+		VirtualQueryHook(baseAddress, mbi, numBytes);
+}
+*/
 //REMEMBER!!! : PIN wants a function pointer in the AFUNCPTR agument!!!
 //avoid the detection of the debugger replacing the function IsDebuggerPresent() with a new one that returns always false
 //very basic way to avoid this anti-debugging technique
@@ -170,6 +185,7 @@ void HookFunctions::hookDispatcher(IMG img){
 				case(CREATEPROCESS_INDEX):
 					RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)CreateProcessHookEntry , IARG_FUNCARG_ENTRYPOINT_VALUE,1, IARG_END);
 					break;
+
 				/*
 				case(VIRTUALALLOC_INDEX):
 					RTN_InsertCall(rtn, IPOINT_AFTER, (AFUNPTR)VirtualAllocHook , IARG_FUNCARG_ENTRYPOINT_VALUE,1 , IARG_FUNCRET_EXITPOINT_VALUE, IARG_END);
