@@ -1,5 +1,4 @@
-# PINdemonium
-An unpacker for windows executables exploiting the capabilities of PIN.
+# arancino
 
 ## Dependencies
 
