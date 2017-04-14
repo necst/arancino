@@ -1,185 +1,45 @@
-# arancino
+# Arancino
 
-## Dependencies
+Arancino is dynamic protection framework that can be used to defend Intel Pin against anti-instrumentation attacks.
+Arancino is a research project developed at [NECSTLab(http://necst.it)].
 
-* [PIN](http://software.intel.com/sites/landingpage/pintool/downloads/pin-2.14-71313-msvc10-windows.zip)
+## Research Paper
 
-* [Scylla](https://github.com/NtQuery/Scylla) 
+We present the findings of this work in a research paper (soon available):
 
-* Visual studio 2010
+**Measuring and Defeating Anti-Instrumentation-Equipped Malware**
+Mario Polino, Andrea Continella, Stefano D’Alessio, Lorenzo Fontana, Fabio Gritti, Sebastiano Mariani, and Stefano Zanero
 
+## Introduction
 
+Dynamic Binary Instrumentation (DBI) Tools are useful in malware analysis.
+However, DBI frameworks are not completely transparent to the analyzed malware, and, in fact, anti-instrumentation techniques have been developed to detect the instrumentation process.
+We classified such anti-instrumentation techniques in four categories:
 
-## Installation
+* **Code Cache Artifacts.** These techniques aim at detecting artifacts that are usually inherent of a DBI cache. For example, the Instruction Pointer is different if a binary is instrumented.
+In fact, in a DBI Tool the code is usually executed from a different memory region, called code cache, rather than from the main module of the binary.
 
-1. Download the linked version of PIN
+* **Environment Artifacts.** The memory layout of an instrumented binary is deeply different respect to the one of a not instrumented one.
+Searching for DBI artifacts such as strings or particular code patterns in memory can eventually reveal the presence of a DBI tool inside the target process memory.
+Also, the parent process of an instrumented binary is often the DBI tool itself.
 
-2. Unzip PIN to the root directory and rename the folder to **pin**
+* **JIT Compiler Detection.** JIT compilers make a lot of noise inside the process in terms of Windows API calls and pages allocation.
+These artifacts can be leveraged by the instrumented program to detect the presence of a DBI tool.
 
-3. Clone this repository
+* **Overhead Detection.** Instrumentation adds an observable overhead in the execution of the target program.
+This overhead can be noticed by malware samples by estimating the execution time of a particular set of instructions.
 
-4. Extract the archive in PINdemonium/ScyllaDependencies/diStorm.rar into PINdemonium/Scylla/
+Our approach leverages the complete control that a DBI Tool has on the instrumented binary to hide the artifacts that the DBI tool itself introduces during the instrumentation process.
+In fact, by instrumenting a binary, we can identify when it tries to leverage such artifacts to evade the analysis.
+In practice, we designed a set of countermeasures for the anti-instrumentation techniques we described above.
 
-5. Extract the archive in PINdemonium/ScyllaDependencies/tinyxml.rar into PINdemonium/Scylla/
+On top of Arancino, we implemented a generic, anti-instrumentation-resilient unpacker.
 
-6. Extract the archive in PINdemonium/ScyllaDependencies/WTL.rar into PINdemonium/Scylla/
+## Dataset release
 
-5. Open the file **PinUnpacker.sln** with Visual Studio 2010 ( **NB: The version is mandatory** )
+In the spirit of open science we are happy to release our datasets to the community.
+You can find our data [here(https://drive.google.com/drive/folders/0BzARZokQgFezVWlBWnZfLUFTX0E?usp=sharing)]
 
-6. Create a folder C:\\pin and copy the folders **PINdemonium\PINdemoniumDependencies** and **PINdemonium\PINdemoniumResults** in **C:\pin\\**
+## Automated Arancino
 
-7. Be sure that you are compiling in Release mode 
-
-8. Be sure that all the module inside the project are compiled using the platform toolset v100 ( you can see this with right click on the module -> Properties -> platform toolset field )
-
-9. Compile the solution
-
-10. **Optional** : Create a folder called **PINdemoniumPlugins** in **C:\pin\\**
-
-```
-	\---C
-	    \---pin
-			   \+---source
-			   	| 	     
-			   	|
-			   	|
-			   \+---PINdemoniumResults
-			   	|
-			   	|
-			   	|
-			   	|
-			   \+---PINdemoniumDependencies 
-			   	|						  
-			   	|			              	\---config.json
-			   	|					\---Yara
-			   	|								\--yara_rules.yar
-			   	|								\--rules
-			   	|					\---Scylla
-			   	|								\---ScyllaDLLRelease
-			   	|									\---ScyllaDLLx86.dll
-			   	|								\---ScyllaDLLDebug
-			   	|									\---ScyllaDLLx86.dll
-			   	|								\---ScyllaDumper.exe
-			   	|
-			   	|
-			   	|
-			   \+---PINdemoniumPlugins
-			   	|
-			   	|
-			   	|
-			   	|
-			   \+---PINdemonium.dll
-```
-
-## Usage
-
-1. Run this command from the directory **C:\pin\\**
-
-	```
-	pin -t PINdemonium.dll [-flags] -- <path_to_the_exe_to_be_instrumented>
-	```
-
-	**Flags :**
-	- **-iwae <number_of_jump_to_dump>** : specify if you want or not to track the inter_write_set analysis dumps and how many jump
-		
-
-	- **-poly-patch**: if the binary you are analyzing has some kind of polymorphic behavior this activate the patch in order to avoid pin to execute the wrong trace.
-
-
-	- **-plugin <name_of_the_plugin>**: specify if you want to call a custom plugin if the IAT-fix fails (more information on in the Plugin system section).
-
-2. Check your result in **C:\pin\PINdemoniumResults\\< current_date_and_time >\\**
-
-## Plugin System
-PINdemonium provides a plugin system in order to extend the functionalities of the IAT fixing module.
-
-To write your own plugin you have to:
-
-1. Copy the sample project called **PINdemoniumPluginTemplate** located in **PINdemonium\PINdemoniumPlugins\\**  wherever you want.
-
-2. Change the name of the project with a name of your choice
-
-3. Implement the function **runPlugin**
-
-4. Compile the project
-
-5. Copy the compiled Dll in **C:\pin\PINdemoniumPlugins**
-
-6. Launch PINdemonium with the flag **plugin** active followed by your plugin name (EX : -plugin PINdemoniumStolenAPIPlugin.dll)
-
-Inside the template two helper function are provided:
-
-- **readMemoryFromProcess** : this function reads the memory from the specified process, at the specified address and copies the read bytes into a buffer
-
-- **writeMemoryToProcess** : this function writes the bytes contained inside a specified buffer into the process memory starting from a specified address
-
-## Yara Rules
-Every time a dump is taken yara is invoked and the rules contained inside **C:\pin\PINdemoniumDependencies\Yara\yara_rules.yar** are checked. The current rule comes from https://github.com/Yara-Rules/rules:
-	- rules\evasion_packer : Try to identify antiVM/antiDebug techniques and the presence of a known packer
-	- rules\malware: Try to identify the malware family of the unpacked stage
-## Config
-Config file located at C:\pin\PINdemoniumDependencies\config.json contains variables which allow to set the location of the outputs
-
-## Results
-Results are located at **C:\pin\PINdemoniumResults\\< current_date_and_time >\\** and contains:
-- **report_PINdemonium**: Json file which contains the most important information about the unpacking process;
-- **log_PINdemonium.txt**: Log which contains useful debugging information
-
-### Report Structure
-```javascript
-{  
-	//Array containing information for each dump
-   "dumps":[             
-      {  
-         "eip":4220719,         	 //EIP where the dump was taken     
-         "start_address":4220439,	 //start address of the Write-set block
-         "end_address":4221043,		 //end address of the Write-set block
-         "heuristics":[
-            {	
-            	//Yara Rules Heuristic
-               "matched_rules":["ASProtectv12AlexeySolodovnikovh1"],
-                "name":"YaraRulesHeuristic",
-                "result":true
-            },
-            {  
-            	//Long Jump Heuristic
-               "length":1801,					
-               "name":"LongJumpHeuristic",
-               "prev_ip":4218918,
-               "result":true
-            },
-            {  
-            	//Entropy Heuristic
-               "current_entropy":5.7026081085205078,    
-               "difference_entropy_percentage":0.0014407391427084804,
-               "name":"EntropyHeuristic",
-               "result":false
-            },
-            {  
-            	//Jump Outer Section Heuristic
-               "current_section":".data",			
-               "name":"JumpOuterSectionHeuristic",
-               "prev_section":".data",
-               "result":false
-            }
-         ],
-         "imports":[  
-			//.... Imported functions....
-         ],
-         "intra_writeset":false,
-         "number":0,
-         "reconstructed_imports":0
-       
-      },
-   ]
-}
-```
-## Thanks
-
-This work has been possible thanks to:
-
-1. [NtQuery/Scylla](https://github.com/NtQuery/Scylla) 
-
-2. [Yara-Rules/rules](https://github.com/Yara-Rules/rules)
-
-3. [VirusTotal/yara](https://github.com/virustotal/yara)
+In order to automate the analysis of malware samples, we also developed a lightweight analysis framework, which we release [here(https://github.com/necst/automated-arancino)].
