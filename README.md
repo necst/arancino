@@ -1,7 +1,7 @@
 # Arancino
 
 Arancino is dynamic protection framework that can be used to defend Intel Pin against anti-instrumentation attacks.
-Arancino is a research project developed at [NECSTLab(http://necst.it)].
+Arancino is a research project developed at [NECSTLab](http://necst.it).
 
 ## Research Paper
 
@@ -38,8 +38,8 @@ On top of Arancino, we implemented a generic, anti-instrumentation-resilient unp
 ## Dataset release
 
 In the spirit of open science we are happy to release our datasets to the community.
-You can find our data [here(https://drive.google.com/drive/folders/0BzARZokQgFezVWlBWnZfLUFTX0E?usp=sharing)]
+You can find our data [here](https://drive.google.com/drive/folders/0BzARZokQgFezVWlBWnZfLUFTX0E?usp=sharing).
 
 ## Automated Arancino
 
-In order to automate the analysis of malware samples, we also developed a lightweight analysis framework, which we release [here(https://github.com/necst/automated-arancino)].
+In order to automate the analysis of malware samples, we also developed a lightweight analysis framework, which we release [here](https://github.com/necst/automated-arancino).
