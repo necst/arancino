@@ -7,7 +7,7 @@ Arancino is a research project developed at [NECSTLab](http://necst.it).
 
 We present the findings of this work in a research paper (soon available):
 
-**Measuring and Defeating Anti-Instrumentation-Equipped Malware**
+**Measuring and Defeating Anti-Instrumentation-Equipped Malware**  
 Mario Polino, Andrea Continella, Stefano D’Alessio, Lorenzo Fontana, Fabio Gritti, Sebastiano Mariani, and Stefano Zanero
 
 ## Introduction
