@@ -5,10 +5,24 @@ Arancino is a research project developed at [NECSTLab](http://necst.it).
 
 ## Research Paper
 
-We present the findings of this work in a research paper (soon available):
+We present the findings of this work in a research paper:
 
 **Measuring and Defeating Anti-Instrumentation-Equipped Malware**  
 Mario Polino, Andrea Continella, Stefano D’Alessio, Lorenzo Fontana, Fabio Gritti, Sebastiano Mariani, and Stefano Zanero
+*In Proceedings of the Conference on Detection of Intrusions and Malware and Vulnerability Assessment (DIMVA), July 2017*
+
+[[PDF](https://conand.me/publications/polino-arancino-2017.pdf)]
+
+If you use *Arancino* in a scientific publication, we would appreciate citations using this **Bibtex** entry:
+``` tex
+@InProceedings{polino_arancino_2017,
+  author     = {Polino, Mario and Continella, Andrea and Mariani, Sebastiano and D’Alessio, Stefano and Fontata, Lorenzo and Gritti, Fabio and Zanero, Stefano},
+  title      = {{Measuring and Defeating Anti-Instrumentation-Equipped Malware}},
+  booktitle  = {{Proceedings of the Conference on Detection of Intrusions and Malware and Vulnerability Assessment (DIMVA)}},
+  location   = {{Bonn, Germany}},
+  date       = {2017},
+}
+```
 
 ## Introduction
 
