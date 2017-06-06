@@ -14,19 +14,19 @@
 
 1. Download the linked version of PIN
 
-2. Unzip PIN to the root directory and rename the folder to **pin**
+2. Unzip PIN to the root directory and rename the folder to **C:\\pin**
 
 3. Clone this repository
 
-4. Extract the archive in PINdemonium/ScyllaDependencies/diStorm.rar into PINdemonium/Scylla/
+4. Extract the archive in ScyllaDependencies/diStorm.rar into PINdemonium/Scylla/
 
-5. Extract the archive in PINdemonium/ScyllaDependencies/tinyxml.rar into PINdemonium/Scylla/
+5. Extract the archive in ScyllaDependencies/tinyxml.rar into PINdemonium/Scylla/
 
-6. Extract the archive in PINdemonium/ScyllaDependencies/WTL.rar into PINdemonium/Scylla/
+6. Extract the archive in ScyllaDependencies/WTL.rar into PINdemonium/Scylla/
 
 5. Open the file **PinUnpacker.sln** with Visual Studio 2010 ( **NB: The version is mandatory** )
 
-6. Create a folder C:\\pin and copy the folders **PINdemonium\PINdemoniumDependencies** and **PINdemonium\PINdemoniumResults** in **C:\pin\\**
+6. Copy the folders **PINdemonium\PINdemoniumDependencies** and **PINdemonium\PINdemoniumResults** in **C:\pin\\**
 
 7. Be sure that you are compiling in Release mode 
 
