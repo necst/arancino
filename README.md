@@ -52,7 +52,7 @@ On top of Arancino, we implemented a generic, anti-instrumentation-resilient unp
 ## Dataset release
 
 In the spirit of open science we are happy to release our datasets to the community.
-You can find our data [here](https://drive.google.com/drive/folders/0BzARZokQgFezVWlBWnZfLUFTX0E?usp=sharing).
+You can find our data [here](https://drive.google.com/drive/folders/0BzARZokQgFezVWlBWnZfLUFTX0E?resourcekey=0-gPb9ctcCXM7AVoIWLdLAJQ&usp=sharing).
 
 ## Automated Arancino
 
